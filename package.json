@@ -1,0 +1,14 @@
+{
+  "name": "quick-fit-track",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "server",
+    "client"
+  ],
+  "scripts": {
+    "dev:server": "cd server && node index.js",
+    "dev:client": "cd client && vite",
+    "install:all": "npm install --workspaces"
+  }
+}
