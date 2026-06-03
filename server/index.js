@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const rateLimit = require('express-rate-limit');
 
 const authRoutes = require('./routes/auth');
 const activitiesRoutes = require('./routes/activities');
@@ -18,6 +19,17 @@ app.use(cors({
 }));
 
 app.use(express.json());
+
+// Rate limit login attempts — brute-forceable with only 10,000 PIN combinations
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 15,
+  skipSuccessfulRequests: true,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many login attempts, please try again in 15 minutes' },
+});
+app.use('/api/auth/login', loginLimiter);
 
 // API routes
 app.use('/api/auth', authRoutes);
@@ -39,8 +51,10 @@ app.get('*', (req, res) => {
   });
 });
 
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+if (process.env.NODE_ENV !== 'test') {
+  app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+  });
+}
 
 module.exports = app;

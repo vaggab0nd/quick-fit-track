@@ -1,10 +1,11 @@
 const express = require('express');
 const db = require('../db');
+const authMiddleware = require('../middleware/auth');
 
 const router = express.Router();
 
 // GET /api/leaderboard
-router.get('/', (req, res) => {
+router.get('/', authMiddleware, (req, res) => {
   // Overall leaderboard
   const overall = db.prepare(`
     SELECT u.name,

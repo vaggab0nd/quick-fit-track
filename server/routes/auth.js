@@ -17,6 +17,9 @@ router.post('/register', async (req, res) => {
   if (!name || typeof name !== 'string' || name.trim().length === 0) {
     return res.status(400).json({ error: 'Name is required' });
   }
+  if (name.trim().length > 50) {
+    return res.status(400).json({ error: 'Name must be 50 characters or fewer' });
+  }
 
   if (!pin || !/^\d{4}$/.test(pin)) {
     return res.status(400).json({ error: 'PIN must be exactly 4 digits' });
