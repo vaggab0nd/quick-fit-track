@@ -1,14 +1,21 @@
 const request = require('supertest');
 const app = require('../index');
 
+let token;
+
+beforeAll(async () => {
+  const res = await request(app).post('/api/auth/register').send({ name: 'Leaderboard_User', pin: '0001' });
+  token = res.body.token;
+});
+
 describe('GET /api/leaderboard', () => {
-  test('is publicly accessible without auth', async () => {
+  test('rejects unauthenticated request', async () => {
     const res = await request(app).get('/api/leaderboard');
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(401);
   });
 
   test('returns correct shape on empty database', async () => {
-    const res = await request(app).get('/api/leaderboard');
+    const res = await request(app).get('/api/leaderboard').set('Authorization', `Bearer ${token}`);
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body.overall)).toBe(true);
     expect(Array.isArray(res.body.by_type.run)).toBe(true);
@@ -41,7 +48,7 @@ describe('GET /api/leaderboard', () => {
     });
 
     test('overall leaderboard ranks by total distance descending', async () => {
-      const res = await request(app).get('/api/leaderboard');
+      const res = await request(app).get('/api/leaderboard').set('Authorization', `Bearer ${token}`);
       const henry = res.body.overall.find(u => u.name === 'Henry');
       const iris = res.body.overall.find(u => u.name === 'Iris');
       expect(henry.total_km).toBe(30);
@@ -54,7 +61,7 @@ describe('GET /api/leaderboard', () => {
     });
 
     test('per-type leaderboards are correct', async () => {
-      const res = await request(app).get('/api/leaderboard');
+      const res = await request(app).get('/api/leaderboard').set('Authorization', `Bearer ${token}`);
       const henryRun = res.body.by_type.run.find(u => u.name === 'Henry');
       const irisRun = res.body.by_type.run.find(u => u.name === 'Iris');
       expect(henryRun.distance_km).toBe(10);
@@ -69,7 +76,7 @@ describe('GET /api/leaderboard', () => {
     });
 
     test('team totals aggregate all users', async () => {
-      const res = await request(app).get('/api/leaderboard');
+      const res = await request(app).get('/api/leaderboard').set('Authorization', `Bearer ${token}`);
       expect(res.body.team.total_km).toBeGreaterThanOrEqual(35); // 10 + 20 + 5
       expect(res.body.team.activity_count).toBeGreaterThanOrEqual(3);
       expect(res.body.team.total_seconds).toBeGreaterThanOrEqual(8700);
