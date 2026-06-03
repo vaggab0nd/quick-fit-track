@@ -1,5 +1,6 @@
 const express = require('express');
 const axios = require('axios');
+const jwt = require('jsonwebtoken');
 const db = require('../db');
 const authMiddleware = require('../middleware/auth');
 
@@ -41,7 +42,7 @@ async function getValidAccessToken(userId) {
   }
 
   const now = Math.floor(Date.now() / 1000);
-  if (user.strava_token_expires_at < now + 60) {
+  if (!user.strava_token_expires_at || user.strava_token_expires_at < now + 60) {
     return await refreshStravaToken(user);
   }
 
@@ -86,13 +87,15 @@ function importActivities(userId, stravaActivities) {
 // GET /api/strava/auth
 router.get('/auth', authMiddleware, (req, res) => {
   const redirectUri = `${process.env.APP_URL}/api/strava/callback`;
+  // Sign state with JWT so it can't be guessed or forged (prevents CSRF account-linking)
+  const state = jwt.sign({ userId: req.userId }, process.env.JWT_SECRET, { expiresIn: '10m' });
   const params = new URLSearchParams({
     client_id: process.env.STRAVA_CLIENT_ID,
     redirect_uri: redirectUri,
     response_type: 'code',
     approval_prompt: 'auto',
     scope: 'read,activity:read_all',
-    state: String(req.userId),
+    state,
   });
 
   res.redirect(`${STRAVA_AUTH_URL}?${params.toString()}`);
@@ -110,8 +113,11 @@ router.get('/callback', async (req, res) => {
     return res.redirect(`${process.env.APP_URL}/my-activities?strava_error=missing_params`);
   }
 
-  const userId = parseInt(state, 10);
-  if (isNaN(userId)) {
+  let userId;
+  try {
+    const payload = jwt.verify(state, process.env.JWT_SECRET);
+    userId = payload.userId;
+  } catch {
     return res.redirect(`${process.env.APP_URL}/my-activities?strava_error=invalid_state`);
   }
 
